@@ -1,30 +1,27 @@
-# dl-mode
+# punch
 
-The dl schema and the plan for the tools that read it. dl is a markdown
-profile: ordinary `.md` files in which a small set of structures (stated
-headings, trailing `#tags`, `key: value` fields, checkboxes, wiki links)
-carry tasks, notes, and agenda data. Everything else in the file is prose
-and is left alone.
+A punch list is the items left to close out. punch is a CLI and a vis plugin
+over one Lua core that reads tasks, notes, and agenda data out of ordinary
+markdown files: stated headings, trailing `#tags`, `key: value` fields,
+checkboxes, and wiki links. Everything else in a file is prose and is left
+alone. Files are the only state; there is no database and no daemon.
 
 ## Contents
 
-- `SCHEMA.md`: the format of record. Rebased from the org-style `.dl`
-  format onto markdown on 2026-10-12; semantics unchanged.
-- `PLAN.md`: decisions, architecture, and slices for the tools: one Lua
-  core shared by a CLI and a vis plugin, no daemon, files as the only state.
+- `SCHEMA.md`: the format of record, a markdown profile. Rebased from the
+  earlier org-style `.dl` format on 2026-10-12; semantics unchanged.
+- `PLAN.md`: decisions, architecture, and slices.
+- `punch/`: the Lua 5.4 core (parser, corpus, index, dates, edit, registry).
+  Plain Lua with no C modules so the same code runs under `lua` and inside
+  vis. `require("punch")` loads every module.
+- `test/`: plain-Lua tests over fixture files. `make test`, `make lint`
+  (luacheck).
 - `reference/`: third-party format references, cloned locally and kept out
-  of git. Currently holds [neorg](https://github.com/nvim-neorg/neorg), whose
-  layered, versioned spec is worth reading for how to structure a
-  machine-parseable format document.
+  of git (neorg's layered spec, worth reading for how to structure a
+  machine-parseable format document).
 
-## Consumers
+## Status
 
-- The Lua core, CLI, and vis plugin described in `PLAN.md` (not yet built).
-- `~/.config/nvim/lua/jake/dl/`: the earlier Neovim implementation of the
-  `.dl` form (parser, index, agenda, cycle, registry). It is the port
-  source for the Lua core and is not maintained as a consumer.
-
-## Current phase
-
-Planning closed 2026-10-12 (D1 markdown profile, D2 Lua core). Next slice is
-the library port, PLAN.md slice 1. The tool is named `punch` (D5).
+Slice 1 (library port) landed 2026-10-12. Next: the CLI (PLAN.md slice 2).
+The earlier Neovim implementation at `~/.config/nvim/lua/jake/dl/` was the
+port source and is not maintained.

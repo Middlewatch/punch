@@ -1,7 +1,7 @@
-# The dl schema: a markdown profile for tasks, notes, and agenda
+# The punch schema: a markdown profile for tasks, notes, and agenda
 
-The shared data shape for the dl tools: a CLI and a vis plugin built on one
-Lua core. Files are ordinary markdown; dl recognizes a small set of
+The shared data shape for punch: a CLI and a vis plugin built on one
+Lua core. Files are ordinary markdown; punch recognizes a small set of
 structures inside them and ignores everything else. A format change after
 the Lua core ships is a rewrite of two front ends, so this document settles
 the shape first.
@@ -26,14 +26,14 @@ configured in one data file. Each entry is a path:
 Only listed paths are in the corpus; a markdown file elsewhere on disk is
 not. Normalization from entry to file set happens in exactly one place (the
 indexer); no downstream tool distinguishes the two shapes. The default
-corpus root is `~/dl/`, which holds the capture inbox (`inbox.md`) and any
+corpus root is `~/punch/`, which holds the capture inbox (`inbox.md`) and any
 files that belong to no project. A project's `TODO.md` enters the corpus by
 listing the file or its directory.
 
 ## File format
 
-A dl file is UTF-8 markdown: an optional file-level field block, then
-headings with their fields and body text. Anything dl does not recognize is
+A punch file is UTF-8 markdown: an optional file-level field block, then
+headings with their fields and body text. Anything punch does not recognize is
 body text and is left alone.
 
 ```
