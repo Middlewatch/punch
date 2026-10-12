@@ -17,18 +17,23 @@ format for all of it beats two.
 
 ## Corpus
 
-The corpus is a named list of paths, independent of any workspace,
-configured in one data file. Each entry is a path:
+The corpus is a named list of paths, independent of any workspace, kept
+in one data file, `corpus`, in the punch home (`$PUNCH_HOME`, default
+`~/punch/`). The list is machine-local data rather than configuration:
+it names what exists on this machine, so it lives beside the files it
+indexes and no dotfile manager carries it. Each entry is a path:
 
 - a directory expands recursively to every `*.md` beneath it
 - a file is taken as-is
 
 Only listed paths are in the corpus; a markdown file elsewhere on disk is
 not. Normalization from entry to file set happens in exactly one place (the
-indexer); no downstream tool distinguishes the two shapes. The default
-corpus root is `~/punch/`, which holds the capture inbox (`inbox.md`) and any
-files that belong to no project. A project's `TODO.md` enters the corpus by
-listing the file or its directory.
+indexer); no downstream tool distinguishes the two shapes. With no
+`corpus` file the corpus is the punch home itself, which holds the capture
+inbox (`inbox.md`) and any files that belong to no project. A project's
+`TODO.md` enters the corpus by listing the file or its directory
+(`punch add PATH`). The state registry (`states`) and inbox override
+(`inbox`) are files in the same directory, all optional.
 
 ## File format
 

@@ -41,12 +41,16 @@ usage: punch [--] TEXT... [-t TAG]... [-s DATE] [-d DATE] [-r REPEAT] [-f FILE]
        punch done FILE:LINE
        punch refile FILE:LINE TARGET-FILE [HEADING]
        punch check
+       punch add PATH...
+       punch corpus
 
 Capture appends "# TODO TEXT" to the inbox, or to FILE with -f. DATE takes
 the surface form or shorthand: today, tomorrow, +3d, +2w, fri, next mon,
 oct 15, each with an optional HH:MM. Text whose first word is a verb needs
 "--" or quotes. FILE:LINE is any line of the entry, as agenda and list
-print it; done cycles the state and advances a repeating entry.]]
+print it; done cycles the state and advances a repeating entry. add lists
+files or directories in the corpus ($PUNCH_HOME/corpus, default ~/punch);
+corpus shows each entry with its open and late counts.]]
 
 local function die(msg)
   io.stderr:write("punch: " .. msg .. "\n")
@@ -343,6 +347,56 @@ function verbs.check(_, states)
   end
   print_rows(rows)
   os.exit(1)
+end
+
+function verbs.add(argv)
+  if not argv[1] then
+    die("add takes PATH...")
+  end
+  local added, dup = registry.add_corpus(argv)
+  if not added then
+    die("cannot write " .. util.contract(registry.corpus_file) .. ": " .. tostring(dup))
+  end
+  for _, path in ipairs(added) do
+    local note = (util.is_dir(path) or util.is_file(path)) and "" or "  (missing, joins when created)"
+    io.write("added ", util.contract(path), note, "\n")
+  end
+  for _, path in ipairs(dup) do
+    io.write("already listed ", util.contract(path), "\n")
+  end
+end
+
+-- One row per corpus entry: files it contributes, open entries, open
+-- checkboxes, late entries; a missing path says so.
+function verbs.corpus(_, states)
+  local today = dates.datenum(dates.now())
+  local rows = {}
+  for _, path in ipairs(registry.corpus()) do
+    if util.is_dir(path) or util.is_file(path) then
+      local scan = index.scan({ path }, states)
+      local open = #index.open(scan.entries, states)
+      local late = 0
+      for _, e in ipairs(index.today(scan.entries, states, dates.now())) do
+        if e.sort_date < today then
+          late = late + 1
+        end
+      end
+      rows[#rows + 1] = {
+        util.contract(path),
+        #scan.files .. " files",
+        open .. " open",
+        #index.open_checkboxes(scan.checkboxes) .. " boxes",
+        late .. " late",
+      }
+    else
+      rows[#rows + 1] = { util.contract(path), "(missing)" }
+    end
+  end
+  if #rows == 0 then
+    io.write("corpus empty (", util.contract(registry.corpus_file), ")\n")
+    return
+  end
+  print_rows(rows)
 end
 
 local function main(argv)

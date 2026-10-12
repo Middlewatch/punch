@@ -6,9 +6,8 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 export HOME=$tmp/home
-export XDG_CONFIG_HOME=$HOME/.config
-mkdir -p "$XDG_CONFIG_HOME/punch" "$HOME/work"
-printf '~/punch\n~/work\n' >"$XDG_CONFIG_HOME/punch/corpus"
+unset PUNCH_HOME
+mkdir -p "$HOME/work"
 punch() { "$root/bin/punch" "$@"; }
 
 failed=0
@@ -36,6 +35,15 @@ closed: 2026-01-01T09:00
 
 - [ ] loose item
 EOF
+
+# add / corpus: the corpus file is written by punch itself under ~/punch
+out=$(punch add ~/punch ~/work ~/elsewhere/TODO.md)
+check "add reports" has "$out" '^added ~/work$'
+check "add missing noted" has "$out" '^added ~/elsewhere/TODO.md  (missing'
+check "add writes ~ form" grep -qx '~/work' "$HOME/punch/corpus"
+check "add dedups" has "$(punch add ~/work)" '^already listed ~/work$'
+check "corpus rows" has "$(punch corpus)" '^~/work  *1 files  2 open  1 boxes  1 late$'
+check "corpus missing" has "$(punch corpus)" '^~/elsewhere/TODO.md  (missing)$'
 
 # capture
 out=$(punch "Buy lumber" -t '#site' -s today)
@@ -85,5 +93,12 @@ check "check fails" [ "$status" -eq 1 ]
 check "check names link" has "$out" 'dangling link \[\[nowhere\]\]'
 sed -i '$d' "$HOME/work/TODO.md"
 check "check ok" has "$(punch check)" '^ok: 2 files'
+
+# PUNCH_HOME relocates everything
+export PUNCH_HOME=$tmp/elsewhere-home
+check "home default corpus" has "$(punch corpus)" 'elsewhere-home  (missing)$' # no file: the home itself
+punch "relocated" >/dev/null
+check "home inbox" grep -qx '# TODO relocated' "$PUNCH_HOME/inbox.md"
+unset PUNCH_HOME
 
 if [ "$failed" -eq 0 ]; then echo "cli ok"; else echo "cli: $failed failed"; exit 1; fi

@@ -31,6 +31,15 @@ daily for two weeks without opening a database, a daemon, or Emacs.
   external calendar integration.
 - **D5. Name: `punch`.** Decided 2026-10-12: a punch list is the items left to close out, and the hit reading fits capture. The repo, the schema, and the
   library namespace all carry the name; `dl-mode` was retired with it.
+- **D6. punch owns its lists; chezmoi carries nothing.** Decided
+  2026-10-12. The corpus list names what exists on one machine, so it is
+  data, not configuration: it lives at `~/punch/corpus` beside the inbox
+  (`$PUNCH_HOME` relocates the whole directory), and `punch add PATH`
+  writes it. The state registry is the same kind of file in the same
+  place and has no reason to travel while the defaults serve. The CLI
+  installs from `bin/install`; the vis plugin is vendored into the vis
+  config like any other plugin. If a setting that must be identical on
+  every machine ever appears, that one file goes to chezmoi then.
 
 ## Prior work and what it taught
 
@@ -60,7 +69,7 @@ punch/         Lua library (the core); require("punch") loads all
   dates.lua    timestamp parse/format, shorthand -> surface form, repeat
   edit.lua     text transforms on a file's lines: append capture,
                cut/paste an entry (refile), cycle state, set field
-  registry.lua states, corpus, inbox path from ~/.config/punch/
+  registry.lua states, corpus, inbox path from ~/punch/ ($PUNCH_HOME)
   util.lua     trim, split, file io, shell quoting
 bin/punch     CLI entry, argument parsing only, calls the library
 vis/punch.lua vis plugin: :punch delegates capture to bin/punch; cycle,
@@ -94,6 +103,11 @@ contains format knowledge.
 - `punch inbox`: count and list of inbox entries, the triage prompt.
 - `punch check`: dangling links, duplicate ids, malformed date and repeat
   fields; exit 1 when anything is listed.
+- `punch add PATH...`: append to the corpus in `~` form, skipping paths
+  already listed; a missing path is noted and joins when created.
+- `punch corpus`: one row per corpus entry with files, open entries, open
+  checkboxes, and late entries: the by-project view beside the agenda's
+  by-date view.
 
 ### vis plugin surface
 
@@ -147,15 +161,14 @@ calendar picker is not planned; revisit only if shorthand fails in use.
    as `~/.config/vis/plugins/punch/` with a `VENDORED.md`, visrc loads
    `require("plugins/punch")` and binds the `Space n` group. Capture
    runs the installed `punch` from PATH.
-4. Corpus seeding: `~/punch/inbox.md`, `TODO.md` in the active projects,
-   `followup-items.md` from the chezmoi repo folded into its `TODO.md`.
+4. Corpus seeding (done 2026-10-12): `~/punch/inbox.md`, `~/punch/corpus`
+   listing the chezmoi repo's `TODO.md` (folded from `followup-items.md`)
+   and pkgit's. Further projects join one at a time with `punch add`.
 5. Two-week dogfood; gripes are captured as `punch "..." -t gripe` and
    read back with `punch list '#gripe'`, so no extra file or heading.
    Harvest feeds the next schema revision.
 
 ## Open items
 
-- Where the corpus data file lives: `~/.config/punch/corpus` is the
-  obvious XDG answer; it is machine-specific, so chezmoi templates it.
 - Whether `TODO.md` is committed or lives in `<slug>/.local/`; per-project
   choice, default committed for public projects.

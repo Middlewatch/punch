@@ -15,8 +15,11 @@ alone. Files are the only state; there is no database and no daemon.
   Plain Lua with no C modules so the same code runs under `lua` and inside
   vis. `require("punch")` loads every module.
 - `bin/punch`: the CLI. `punch "text"` captures to the inbox; `agenda`,
-  `list`, `inbox`, `done`, `refile`, `check` read and edit the corpus
-  listed in `~/.config/punch/corpus`. `punch help` has the flags.
+  `list`, `inbox`, `done`, `refile`, `check` read and edit the corpus;
+  `add` and `corpus` manage its list. Everything punch owns is in one
+  directory, `~/punch/` (`$PUNCH_HOME`): `inbox.md`, loose notes, the
+  `corpus` list, and an optional `states` file. `punch help` has the
+  flags.
   `bin/install [PREFIX]` copies it to `PREFIX/bin` with the core under
   `PREFIX/share/punch` (default `~/.local`), like the vis and tmux forks.
 - `vis/punch.lua`: the vis plugin. `:punch TEXT...` captures through the
@@ -36,7 +39,7 @@ alone. Files are the only state; there is no database and no daemon.
 
 ## Status
 
-Slices 1 (library port), 2 (CLI), and 3 (vis plugin) landed 2026-10-12.
-Next: corpus seeding (PLAN.md slice 4), then the dogfood.
+Slices 1 through 4 (library, CLI, vis plugin, seeding) landed 2026-10-12.
+Next: the two-week dogfood (PLAN.md slice 5).
 The earlier Neovim implementation at `~/.config/nvim/lua/jake/dl/` was the
 port source and is not maintained.
