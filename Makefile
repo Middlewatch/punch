@@ -5,10 +5,11 @@ BINDIR ?= $(HOME)/.local/bin
 
 test:
 	$(LUA) test/run.lua
+	$(LUA) test/vis.lua
 	bash test/cli.sh
 
 lint:
-	luacheck punch test bin/punch
+	luacheck punch vis test bin/punch
 
 install:
 	ln -sf $(CURDIR)/bin/punch $(BINDIR)/punch

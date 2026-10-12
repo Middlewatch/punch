@@ -63,7 +63,8 @@ punch/         Lua library (the core); require("punch") loads all
   registry.lua states, corpus, inbox path from ~/.config/punch/
   util.lua     trim, split, file io, shell quoting
 bin/punch     CLI entry, argument parsing only, calls the library
-vis/punch.lua vis plugin, key maps and commands only, calls the library
+vis/punch.lua vis plugin: :punch delegates capture to bin/punch; cycle,
+              toggle, scheduled, deadline apply edit.* to the buffer
 ```
 
 The rule that keeps the two front ends honest: every mutation is a
@@ -96,23 +97,32 @@ contains format knowledge.
 
 ### vis plugin surface
 
-Facts checked in `~/projects/vis/vis-lua.c` on 2026-10-12: the Lua API
-exposes `vis:map`, `vis:command_register`, `vis:pipe`, `vis:communicate`,
-`vis:message`, `vis:info`, `vis:feedkeys`, and the `win.file` line table.
-There is no prompt or input primitive, so interactive input comes from two
-existing patterns: a registered `:` command with arguments (what
-`vis-lspc` does), and piping choices through `vis-menu` (what `vis-open`
-does; `vis-menu` is on PATH at `~/.local/bin/vis-menu`).
+Decided 2026-10-12: vis is not an editor the owner lives inside, so the
+agenda, list, inbox, and check views stay in the CLI; vis gets capture
+(an idea mid-edit) and the edits that are better made in the buffer than
+by `punch done FILE:LINE` after a save. Refile stays in the CLI until the
+dogfood says otherwise. No default key maps; visrc binds the functions
+under its own leader groups.
 
-- Leader+t on a selection or the current entry: refile. The plugin lists
-  corpus files through `vis-menu`, then headings in the chosen file, then
-  calls `edit.refile`. A path typed instead of picked creates the file.
-- Leader+d: cycle state on the entry under the cursor.
-- Leader+s / leader+e: set `scheduled` / `deadline` via a `:` command that
-  accepts shorthand.
-- `:punch agenda`: open the agenda as a read-only buffer with file:line
-  targets; Enter jumps.
-- Inbox triage is "open `inbox.md`, leader+t on each entry."
+Facts checked in `~/projects/vis/vis-lua.c` on 2026-10-12: `file.lines[i]`
+reads and replaces one line, `file:insert(pos, text)` and
+`file:delete(pos, len)` take byte offsets, `#file.lines` ignores the
+trailing newline, `vis:pipe(cmd)` returns status, stdout, stderr, and a
+`:` command handler receives `(argv, force, win, selection, range)`. There
+is no prompt primitive; the `:` line is the prompt.
+
+- `:punch TEXT... [flags]`: capture. Every argument goes to `bin/punch`
+  unchanged, so the CLI's flags and date shorthand apply; the CLI's
+  one-line result shows in the status line.
+- `:punch-cycle`: `edit.cycle` on the entry at or above the cursor.
+- `:punch-toggle`: `edit.toggle_checkbox` on the cursor line.
+- `:punch-scheduled DATE` / `:punch-deadline DATE`: `edit.set_field` with
+  shorthand on the entry at or above the cursor.
+
+The buffer glue reads `win.file.lines` into a table, applies the edit
+function, and writes back only the window of lines that changed, so undo
+holds one step and the cursor stays put. The plugin finds the library
+through `$PUNCH_ROOT` or the directory above its own file.
 
 ### Dates
 
@@ -130,8 +140,10 @@ calendar picker is not planned; revisit only if shorthand fails in use.
    end by `test/cli.sh` under a throwaway HOME. `make install` symlinks it
    into `~/.local/bin`; move to the chezmoi `dot_local/bin` path once
    stable.
-3. vis plugin: refile and cycle first, agenda buffer second. Lives in
-   `~/.config/vis/plugins/punch/` beside `vis-lspc`.
+3. vis plugin (done 2026-10-12): `vis/punch.lua` in this repo, checked by
+   `test/vis.lua` against a stub of the vis API. visrc loads it with
+   `dofile(HOME .. "/projects/punch/vis/punch.lua")` and binds keys; that
+   line is the owner's (`~/.config/vis` is chezmoi-managed).
 4. Corpus seeding: `~/punch/inbox.md`, `TODO.md` in the active projects,
    `followup-items.md` from the chezmoi repo folded into its `TODO.md`.
 5. Two-week dogfood with a gripe heading in the inbox; harvest feeds the
