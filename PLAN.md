@@ -1,4 +1,4 @@
-# dl tools plan: one Lua core, a CLI, and a vis plugin
+# punch plan: one Lua core, a CLI, and a vis plugin
 
 Status: planning, 2026-10-12. SCHEMA.md is the format of record; this file
 holds the decisions, architecture, and slices for the tools that read it.
@@ -12,7 +12,7 @@ daily for two weeks without opening a database, a daemon, or Emacs.
 
 ## Decisions
 
-- **D1. Markdown profile.** The dl schema is a profile over markdown
+- **D1. Markdown profile.** The punch schema is a profile over markdown
   (SCHEMA.md, revision 2026-10-12). Project task files are `TODO.md`.
 - **D2. One Lua core, two front ends.** Parser, index, agenda, and refile
   live in a Lua 5.4 library. The CLI is a Lua script; the vis plugin
@@ -25,12 +25,12 @@ daily for two weeks without opening a database, a daemon, or Emacs.
   nothing. If a corpus grows large enough that a rebuild per run hurts, a
   cache file keyed by mtime is the additive fix.
 - **D4. Separate corpora, one format.** Tasks (`~/projects/*/TODO.md`),
-  notebook (`~/notes/` or wherever), and inbox (`~/dl/inbox.md`) are
+  notebook (`~/notes/` or wherever), and inbox (`~/punch/inbox.md`) are
   separate corpus entries. The agenda is the only join. Calendar is the
   agenda filtered to `scheduled` and `deadline`; no notification or
   external calendar integration.
-- **D5. Name: `punch`.** Decided 2026-10-12: a punch list is the items left to close out, and the hit reading fits capture. `dl` remains the
-  schema name regardless.
+- **D5. Name: `punch`.** Decided 2026-10-12: a punch list is the items left to close out, and the hit reading fits capture. The repo, the schema, and the
+  library namespace all carry the name; `dl-mode` was retired with it.
 
 ## Prior work and what it taught
 
@@ -53,14 +53,15 @@ daily for two weeks without opening a database, a daemon, or Emacs.
 ## Architecture
 
 ```
-dl/            Lua library (the core)
+punch/         Lua library (the core); require("punch") loads all
   parser.lua   lines -> raw entries (headings, fields, checkboxes, links)
   corpus.lua   corpus file -> list of markdown paths
   index.lua    inheritance, agenda queries, backlinks, id table
   dates.lua    timestamp parse/format, shorthand -> surface form, repeat
   edit.lua     text transforms on a file's lines: append capture,
                cut/paste an entry (refile), cycle state, set field
-  registry.lua states and field types, loaded from a data file
+  registry.lua states, corpus, inbox path from ~/.config/punch/
+  util.lua     trim, split, file io, shell quoting
 bin/punch     CLI entry, argument parsing only, calls the library
 vis/punch.lua vis plugin, key maps and commands only, calls the library
 ```
@@ -115,7 +116,7 @@ calendar picker is not planned; revisit only if shorthand fails in use.
 
 ## Slices
 
-1. Library port: move the five nvim modules into `dl/`, swap the heading
+1. Library port (done 2026-10-12): the five nvim modules into `punch/`, swap the heading
    pattern and corpus rule, add `dates.lua` shorthand and `edit.lua`. Tests
    are plain `lua` scripts over fixture files in `test/`, run by `make
    test`; no test framework.
@@ -123,7 +124,7 @@ calendar picker is not planned; revisit only if shorthand fails in use.
    through the chezmoi `dot_local/bin` path once stable.
 3. vis plugin: refile and cycle first, agenda buffer second. Lives in
    `~/.config/vis/plugins/punch/` beside `vis-lspc`.
-4. Corpus seeding: `~/dl/inbox.md`, `TODO.md` in the active projects,
+4. Corpus seeding: `~/punch/inbox.md`, `TODO.md` in the active projects,
    `followup-items.md` from the chezmoi repo folded into its `TODO.md`.
 5. Two-week dogfood with a gripe heading in the inbox; harvest feeds the
    next schema revision.
