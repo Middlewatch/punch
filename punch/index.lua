@@ -189,10 +189,27 @@ function M.open_checkboxes(checkboxes)
   return out
 end
 
--- Integrity report: { dangling = { link... }, duplicate_ids = { { id, entries } } }.
--- A [[file]] target matches a corpus file by title field or by basename
--- without .md; a heading part matches a heading title in that file.
+-- Integrity report: { dangling = { link... }, duplicate_ids = { { id, entries } },
+-- bad_fields = { { file, lnum, key, value } } }. A [[file]] target matches a
+-- corpus file by title field or by basename without .md; a heading part
+-- matches a heading title in that file. A bad field is a date field that
+-- is not a timestamp or a repeat that is not a recurrence.
 function M.check(scan)
+  local bad_fields = {}
+  for _, e in ipairs(scan.entries) do
+    for _, f in ipairs(e.field_lines) do
+      local ok = true
+      if f.key == "scheduled" or f.key == "deadline" or f.key == "closed" then
+        ok = dates.parse_timestamp(f.value) ~= nil
+      elseif f.key == "repeat" then
+        ok = dates.parse_repeat(f.value) ~= nil
+      end
+      if not ok then
+        bad_fields[#bad_fields + 1] = { file = e.file, lnum = f.lnum, key = f.key, value = f.value }
+      end
+    end
+  end
+  table.sort(bad_fields, by_position)
   local ids, dup = {}, {}
   for _, e in ipairs(scan.entries) do
     local id = e.own_fields.id
@@ -238,7 +255,7 @@ function M.check(scan)
     end
   end
   table.sort(dangling, by_position)
-  return { dangling = dangling, duplicate_ids = duplicate_ids }
+  return { dangling = dangling, duplicate_ids = duplicate_ids, bad_fields = bad_fields }
 end
 
 return M

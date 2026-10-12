@@ -74,19 +74,25 @@ contains format knowledge.
 
 ### CLI surface (verbs, subject to the name)
 
-- `punch "text"`: append a `# TODO text` entry to the inbox. Flags
-  `-t tag` (repeatable), `-s date`, `-d date` set tags, `scheduled`,
-  `deadline`; dates accept shorthand and are written in surface form. With
-  `-f file` the entry goes straight to that corpus file instead of the
-  inbox. No flags, no prompt: capture must be one line and done.
+- `punch "text"`: append a `# TODO text` entry to the inbox. Unquoted
+  words join; a first word that is also a verb needs quotes or `--`. Flags
+  `-t tag` (repeatable), `-s date`, `-d date`, `-r spec` set tags,
+  `scheduled`, `deadline`, `repeat`; dates accept shorthand and are written
+  in surface form. With `-f file` the entry goes straight to that corpus
+  file instead of the inbox. No flags, no prompt: capture must be one line
+  and done.
 - `punch agenda [today|week|all]`: scheduled and deadline entries across
   the corpus, late items first, then open checkboxes by file.
-- `punch list [#tag] [STATE]`: filtered entry list with file:line.
+- `punch list [#tag] [STATE]`: filtered entry list with file:line; open
+  entries unless a state is named.
 - `punch refile <file:line> <target-file> [heading]`: move an entry and
-  its subtree.
-- `punch done <file:line>`: cycle state; advances a repeating entry.
+  its subtree; the heading matches exactly or as a unique substring, and a
+  missing target file is created.
+- `punch done <file:line>`: cycle state; advances a repeating entry. Any
+  line of the entry resolves to its heading, so agenda output pastes back.
 - `punch inbox`: count and list of inbox entries, the triage prompt.
-- `punch check`: dangling links, duplicate ids, parse warnings.
+- `punch check`: dangling links, duplicate ids, malformed date and repeat
+  fields; exit 1 when anything is listed.
 
 ### vis plugin surface
 
@@ -120,8 +126,10 @@ calendar picker is not planned; revisit only if shorthand fails in use.
    pattern and corpus rule, add `dates.lua` shorthand and `edit.lua`. Tests
    are plain `lua` scripts over fixture files in `test/`, run by `make
    test`; no test framework.
-2. CLI: capture, agenda, list, inbox, done. Install to `~/.local/bin`
-   through the chezmoi `dot_local/bin` path once stable.
+2. CLI (done 2026-10-12): all seven verbs in `bin/punch`, checked end to
+   end by `test/cli.sh` under a throwaway HOME. `make install` symlinks it
+   into `~/.local/bin`; move to the chezmoi `dot_local/bin` path once
+   stable.
 3. vis plugin: refile and cycle first, agenda buffer second. Lives in
    `~/.config/vis/plugins/punch/` beside `vis-lspc`.
 4. Corpus seeding: `~/punch/inbox.md`, `TODO.md` in the active projects,

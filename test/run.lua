@@ -120,6 +120,15 @@ do
   eq("dangling", #report.dangling, 2)
   eq("dangling first", report.dangling[1].file, fixtures .. "/notes.md")
   eq("duplicate ids", #report.duplicate_ids, 0)
+  eq("bad fields none", #report.bad_fields, 0)
+
+  local tmp = os.tmpname()
+  punch.util.write_lines(tmp, { "# TODO x", "scheduled: 2026-13-01", "repeat: 3x", "deadline: 2026-12-01" })
+  local bad = index.check(index.scan({ tmp }, states)).bad_fields
+  os.remove(tmp)
+  eq("bad fields count", #bad, 2)
+  eq("bad field key", bad[1].key, "scheduled")
+  eq("bad field lnum", bad[2].lnum, 3)
 end
 
 -- edit ---------------------------------------------------------------------

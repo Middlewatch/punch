@@ -49,6 +49,15 @@ function M.expand(path)
   return path
 end
 
+-- The inverse of expand for display: a path under $HOME shown as ~/...
+function M.contract(path)
+  local home = os.getenv("HOME")
+  if home and home ~= "" and path:sub(1, #home + 1) == home .. "/" then
+    return "~" .. path:sub(#home + 1)
+  end
+  return path
+end
+
 function M.shell_quote(s)
   return "'" .. s:gsub("'", "'\\''") .. "'"
 end
@@ -59,6 +68,10 @@ end
 
 function M.is_file(path)
   return os.execute("test -f " .. M.shell_quote(path)) == true
+end
+
+function M.mkdir_p(path)
+  return os.execute("mkdir -p " .. M.shell_quote(path)) == true
 end
 
 function M.read_lines(path)

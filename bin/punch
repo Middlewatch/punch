@@ -1,0 +1,354 @@
+#!/usr/bin/env lua
+-- punch: capture, agenda, list, inbox, done, refile, check.
+-- Argument parsing and printing only; every read of the format and every
+-- mutation goes through the punch library, so the vis plugin and this
+-- script cannot drift apart.
+
+local function script_root()
+  local env = os.getenv("PUNCH_ROOT")
+  if env and env ~= "" then
+    return env
+  end
+  local quoted = "'" .. arg[0]:gsub("'", "'\\''") .. "'"
+  local p = io.popen("readlink -f " .. quoted)
+  local real = p and p:read("l") or arg[0]
+  if p then
+    p:close()
+  end
+  return real:match("^(.*)/bin/[^/]*$") or "."
+end
+
+local root = script_root()
+package.path = root .. "/?.lua;" .. root .. "/?/init.lua;" .. package.path
+
+local punch = require("punch")
+local util, dates, parser, index, edit, registry =
+  punch.util, punch.dates, punch.parser, punch.index, punch.edit, punch.registry
+
+local USAGE = [[
+usage: punch [--] TEXT... [-t TAG]... [-s DATE] [-d DATE] [-r REPEAT] [-f FILE]
+       punch agenda [today|week|all]
+       punch list [#TAG] [STATE]
+       punch inbox
+       punch done FILE:LINE
+       punch refile FILE:LINE TARGET-FILE [HEADING]
+       punch check
+
+Capture appends "# TODO TEXT" to the inbox, or to FILE with -f. DATE takes
+the surface form or shorthand: today, tomorrow, +3d, +2w, fri, next mon,
+oct 15, each with an optional HH:MM. Text whose first word is a verb needs
+"--" or quotes. FILE:LINE is any line of the entry, as agenda and list
+print it; done cycles the state and advances a repeating entry.]]
+
+local function die(msg)
+  io.stderr:write("punch: " .. msg .. "\n")
+  os.exit(1)
+end
+
+local function where(file, lnum)
+  return util.contract(file) .. ":" .. lnum
+end
+
+local function describe(entry)
+  local text = (entry.state and (entry.state .. " ") or "") .. entry.title
+  for _, tag in ipairs(entry.tags) do
+    text = text .. " #" .. tag
+  end
+  return text
+end
+
+-- Prints rows of columns, every column but the last padded to its width.
+local function print_rows(rows)
+  local width = {}
+  for _, row in ipairs(rows) do
+    for i = 1, #row - 1 do
+      width[i] = math.max(width[i] or 0, #row[i])
+    end
+  end
+  for _, row in ipairs(rows) do
+    local cells = {}
+    for i, cell in ipairs(row) do
+      cells[i] = i < #row and (cell .. string.rep(" ", width[i] - #cell)) or cell
+    end
+    io.write(table.concat(cells, "  "), "\n")
+  end
+end
+
+local function parse_loc(s)
+  local file, lnum = s:match("^(.-):(%d+)$")
+  if not file then
+    die("expected FILE:LINE, got " .. s)
+  end
+  return util.expand(file), tonumber(lnum)
+end
+
+-- The file's lines and the entry at or above lnum.
+local function entry_at(path, lnum, states)
+  local lines = util.read_lines(path) or die("cannot read " .. util.contract(path))
+  local entry = parser.entry_at(parser.parse(lines, states), lnum)
+  if not entry then
+    die("no entry at or above " .. where(path, lnum))
+  end
+  return lines, entry
+end
+
+local function write(path, lines)
+  local ok, err = util.write_lines(path, lines)
+  if not ok then
+    die("cannot write " .. util.contract(path) .. ": " .. tostring(err))
+  end
+end
+
+local function parse_flags(argv)
+  local opts = { tags = {}, words = {} }
+  local i = 1
+  while i <= #argv do
+    local a = argv[i]
+    if a == "--" then
+      for j = i + 1, #argv do
+        opts.words[#opts.words + 1] = argv[j]
+      end
+      break
+    elseif a == "-t" or a == "-s" or a == "-d" or a == "-r" or a == "-f" then
+      local value = argv[i + 1]
+      if not value then
+        die("missing value for " .. a)
+      end
+      if a == "-t" then
+        opts.tags[#opts.tags + 1] = value:gsub("^#", "")
+      else
+        opts[a:sub(2)] = value
+      end
+      i = i + 2
+    elseif a == "-h" or a == "--help" then
+      opts.help = true
+      i = i + 1
+    elseif a:sub(1, 1) == "-" and #a > 1 then
+      die("unknown flag " .. a .. "\n" .. USAGE)
+    else
+      opts.words[#opts.words + 1] = a
+      i = i + 1
+    end
+  end
+  return opts
+end
+
+local verbs = {}
+
+function verbs.capture(argv)
+  local opts = parse_flags(argv)
+  if opts.help then
+    io.write(USAGE, "\n")
+    return
+  end
+  local title = util.trim(table.concat(opts.words, " "))
+  if title == "" then
+    die("nothing to capture\n" .. USAGE)
+  end
+  local now = dates.now()
+  local entry = { title = title, tags = opts.tags }
+  for _, key in ipairs({ { "s", "scheduled" }, { "d", "deadline" } }) do
+    local flag, field = key[1], key[2]
+    if opts[flag] then
+      local ts = dates.parse_shorthand(opts[flag], now)
+      if not ts then
+        die("bad date for -" .. flag .. ": " .. opts[flag])
+      end
+      entry[field] = dates.format_timestamp(ts)
+    end
+  end
+  if opts.r then
+    if not dates.parse_repeat(opts.r) then
+      die("bad repeat: " .. opts.r)
+    end
+    entry["repeat"] = opts.r
+  end
+  local path
+  if opts.f then
+    path = util.expand(opts.f)
+  else
+    path = registry.inbox()
+    util.mkdir_p(util.dirname(path))
+  end
+  local lines = util.read_lines(path) or {}
+  local out = edit.capture(lines, entry)
+  write(path, out)
+  local lnum = #out - #edit.entry_lines(entry) + 1
+  io.write(where(path, lnum), "  ", out[lnum], "\n")
+end
+
+function verbs.agenda(argv, states)
+  local view = argv[1] or "today"
+  local now = dates.now()
+  local limit
+  if view == "today" then
+    limit = now
+  elseif view == "week" then
+    limit = dates.parse_shorthand("+1w", now)
+  elseif view == "all" then
+    limit = { year = 9999, month = 12, day = 31 }
+  else
+    die("agenda takes today, week, or all")
+  end
+  local scan = index.scan(registry.corpus(), states)
+  local today = dates.datenum(now)
+  local rows = {}
+  for _, e in ipairs(index.today(scan.entries, states, limit)) do
+    local when = e.sort_date < today and "late" or (e.sort_date == today and "today" or "")
+    local ts = index.field_date(e, e.sort_key)
+    rows[#rows + 1] = { when, dates.format_timestamp(ts), e.sort_key, describe(e), where(e.file, e.lnum) }
+  end
+  if #rows > 0 then
+    print_rows(rows)
+  end
+  local boxes = index.open_checkboxes(scan.checkboxes)
+  if #boxes > 0 then
+    if #rows > 0 then
+      io.write("\n")
+    end
+    io.write("open checkboxes\n")
+    rows = {}
+    for _, box in ipairs(boxes) do
+      rows[#rows + 1] = { where(box.file, box.lnum), box.text }
+    end
+    print_rows(rows)
+  end
+  if #rows == 0 then
+    io.write("nothing due\n")
+  end
+end
+
+function verbs.list(argv, states)
+  local tag, state
+  for _, a in ipairs(argv) do
+    if a:sub(1, 1) == "#" then
+      tag = a:sub(2)
+    elseif states.by_name[a] then
+      state = a
+    else
+      die("list takes #TAG and a registry STATE, got " .. a)
+    end
+  end
+  local scan = index.scan(registry.corpus(), states)
+  local entries = state and scan.entries or index.open(scan.entries, states)
+  local rows = {}
+  for _, e in ipairs(entries) do
+    if (not state or e.state == state) and (not tag or util.contains(e.tags, tag)) then
+      rows[#rows + 1] = { where(e.file, e.lnum), describe(e) }
+    end
+  end
+  table.sort(rows, function(a, b)
+    return a[1] < b[1]
+  end)
+  print_rows(rows)
+end
+
+function verbs.inbox(_, states)
+  local path = registry.inbox()
+  local scan = index.scan({ path }, states)
+  if #scan.entries == 0 then
+    io.write("inbox empty (", util.contract(path), ")\n")
+    return
+  end
+  io.write(#scan.entries, " in ", util.contract(path), "\n")
+  local rows = {}
+  for _, e in ipairs(scan.entries) do
+    rows[#rows + 1] = { where(e.file, e.lnum), describe(e) }
+  end
+  print_rows(rows)
+end
+
+function verbs.done(argv, states)
+  if not argv[1] then
+    die("done takes FILE:LINE")
+  end
+  local path, lnum = parse_loc(argv[1])
+  local lines, entry = entry_at(path, lnum, states)
+  local out = edit.cycle(lines, entry.lnum, states)
+  write(path, out)
+  io.write(where(path, entry.lnum), "  ", out[entry.lnum], "\n")
+end
+
+-- The heading in parsed whose title matches text: exact first, then a
+-- unique case-insensitive substring.
+local function find_heading(parsed, text)
+  for _, e in ipairs(parsed.entries) do
+    if e.title == text then
+      return e
+    end
+  end
+  local found
+  local needle = text:lower()
+  for _, e in ipairs(parsed.entries) do
+    if e.title:lower():find(needle, 1, true) then
+      if found then
+        die("more than one heading matches " .. text)
+      end
+      found = e
+    end
+  end
+  return found or die("no heading matches " .. text)
+end
+
+function verbs.refile(argv, states)
+  if not argv[1] or not argv[2] then
+    die("refile takes FILE:LINE TARGET-FILE [HEADING]")
+  end
+  local src_path, lnum = parse_loc(argv[1])
+  local dst_path = util.expand(argv[2])
+  local src, entry = entry_at(src_path, lnum, states)
+  local dst = src_path == dst_path and src or (util.read_lines(dst_path) or {})
+  local target_lnum
+  if argv[3] then
+    target_lnum = find_heading(parser.parse(dst, states), argv[3]).lnum
+  end
+  local new_src, new_dst = edit.refile(src, entry.lnum, dst, target_lnum, states)
+  if not new_src then
+    die("cannot refile an entry under its own subtree")
+  end
+  write(dst_path, new_dst)
+  if src_path ~= dst_path then
+    write(src_path, new_src)
+  end
+  io.write(entry.title, " -> ", target_lnum and where(dst_path, target_lnum) or util.contract(dst_path), "\n")
+end
+
+function verbs.check(_, states)
+  local scan = index.scan(registry.corpus(), states)
+  local report = index.check(scan)
+  local rows = {}
+  for _, link in ipairs(report.dangling) do
+    local text = link.id and ("#" .. link.id) or (link.target .. (link.heading and ("#" .. link.heading) or ""))
+    rows[#rows + 1] = { where(link.file, link.lnum), "dangling link [[" .. text .. "]]" }
+  end
+  for _, dup in ipairs(report.duplicate_ids) do
+    for _, e in ipairs(dup.entries) do
+      rows[#rows + 1] = { where(e.file, e.lnum), "duplicate id " .. dup.id }
+    end
+  end
+  for _, f in ipairs(report.bad_fields) do
+    rows[#rows + 1] = { where(f.file, f.lnum), "bad " .. f.key .. ": " .. f.value }
+  end
+  if #rows == 0 then
+    io.write("ok: ", #scan.files, " files, ", #scan.entries, " entries\n")
+    return
+  end
+  print_rows(rows)
+  os.exit(1)
+end
+
+local function main(argv)
+  if #argv == 0 or argv[1] == "help" then
+    io.write(USAGE, "\n")
+    os.exit(#argv == 0 and 2 or 0)
+  end
+  local states = registry.states()
+  local verb = verbs[argv[1]]
+  if verb and argv[1] ~= "capture" then
+    verb({ table.unpack(argv, 2) }, states)
+  else
+    verbs.capture(argv)
+  end
+end
+
+main(arg)
