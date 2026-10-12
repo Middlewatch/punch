@@ -1,26 +1,30 @@
 # dl-mode
 
-The `.dl` letter schema and its documentation, staged as its own project so
-the format can evolve without being tied to the dead-letter editor's release
-cadence. Two consumers exist today: the Neovim implementation at
-`~/.config/nvim/lua/jake/dl/` (parser, index, agenda, cycle, registry), which
-proves the schema in daily use, and the dead-letter editor at
-`~/projects/dead-letter/`, which will adopt it natively once the shape settles.
+The dl schema and the plan for the tools that read it. dl is a markdown
+profile: ordinary `.md` files in which a small set of structures (stated
+headings, trailing `#tags`, `key: value` fields, checkboxes, wiki links)
+carry tasks, notes, and agenda data. Everything else in the file is prose
+and is left alone.
 
 ## Contents
 
-- `SCHEMA.md` — the schema itself, moved here from the dead-letter repo on
-  2026-09-01. This is the document of record; dead-letter's README points here.
-- `reference/` — third-party format references, cloned locally and kept out of
-  git. Currently holds [neorg](https://github.com/nvim-neorg/neorg), whose
+- `SCHEMA.md`: the format of record. Rebased from the org-style `.dl`
+  format onto markdown on 2026-10-12; semantics unchanged.
+- `PLAN.md`: decisions, architecture, and slices for the tools: one Lua
+  core shared by a CLI and a vis plugin, no daemon, files as the only state.
+- `reference/`: third-party format references, cloned locally and kept out
+  of git. Currently holds [neorg](https://github.com/nvim-neorg/neorg), whose
   layered, versioned spec is worth reading for how to structure a
-  machine-parseable format document, even though its `.norg` format is a
-  deliberate divergence from org rather than a model for dl semantics.
+  machine-parseable format document.
+
+## Consumers
+
+- The Lua core, CLI, and vis plugin described in `PLAN.md` (not yet built).
+- `~/.config/nvim/lua/jake/dl/`: the earlier Neovim implementation of the
+  `.dl` form (parser, index, agenda, cycle, registry). It is the port
+  source for the Lua core and is not maintained as a consumer.
 
 ## Current phase
 
-Daily-driving nvim-orgmode (installed 2026-09-01 in the Neovim config) for a
-few weeks to feel real org behavior — agenda, capture, refile, repeaters —
-before committing the dl schema to its equivalents. Friction observations go
-to `~/dl/annoyances.dl` via the `<leader>og` gripe binding; the harvest of
-that log seeds the next schema revision.
+Planning closed 2026-10-12 (D1 markdown profile, D2 Lua core). Next slice is
+the library port, PLAN.md slice 1. The tool name is still open.

@@ -1,58 +1,73 @@
-# The .dl letter schema
+# The dl schema: a markdown profile for tasks, notes, and agenda
 
-The shared data shape for dead letter's org-mode replacement. Neovim is the
-first consumer and proves the schema before dead letter adopts it natively;
-a format change after that point is a rewrite of both tools, so this document
-settles the shape first.
+The shared data shape for the dl tools: a CLI and a vis plugin built on one
+Lua core. Files are ordinary markdown; dl recognizes a small set of
+structures inside them and ignores everything else. A format change after
+the Lua core ships is a rewrite of two front ends, so this document settles
+the shape first.
 
 Vocabulary is neutral throughout: entries, headings, states, fields, corpus.
 
+Revision 2026-10-12: rebased from the org-style `.dl` format (star
+headings, `.dl` extension) onto markdown. Semantics are unchanged; only the
+heading sigil, the file extension, and the corpus rule moved. The reasons:
+the task layer is a `TODO.md` per project, the wiki and plan documents are
+already markdown, `mdq` and every renderer already understand it, and one
+format for all of it beats two.
+
 ## Corpus
 
-The corpus is a named list of paths, independent of any workspace, configured
-in one data file. Each entry is a path:
+The corpus is a named list of paths, independent of any workspace,
+configured in one data file. Each entry is a path:
 
-- a directory expands recursively to every `*.dl` beneath it
+- a directory expands recursively to every `*.md` beneath it
 - a file is taken as-is
 
-Normalization from entry to file set happens in exactly one place (the
-indexer); no downstream tool distinguishes the two shapes. The default corpus
-root is `~/dl/`.
+Only listed paths are in the corpus; a markdown file elsewhere on disk is
+not. Normalization from entry to file set happens in exactly one place (the
+indexer); no downstream tool distinguishes the two shapes. The default
+corpus root is `~/dl/`, which holds the capture inbox (`inbox.md`) and any
+files that belong to no project. A project's `TODO.md` enters the corpus by
+listing the file or its directory.
 
 ## File format
 
-A `.dl` file is UTF-8 plain text: an optional file-level field block, then
-headings with their fields and body text.
+A dl file is UTF-8 markdown: an optional file-level field block, then
+headings with their fields and body text. Anything dl does not recognize is
+body text and is left alone.
 
 ```
 title: Site 12 permits
 #county #site-12
 
-* TODO Call the county about the culvert permit #permits
-  scheduled: 2026-09-01
-  deadline: 2026-09-15
-  repeat: 2w from done
+# TODO Call the county about the culvert permit #permits
+scheduled: 2026-09-01
+deadline: 2026-09-15
+repeat: 2w from done
 
-  Free body text belongs to the nearest heading above it.
+Free body text belongs to the nearest heading above it.
 
-  - [x] pull the parcel number
-  - [ ] confirm the fee schedule
+- [x] pull the parcel number
+- [ ] confirm the fee schedule
 
-** DONE Gather the parcel drawings
-   closed: 2026-08-24T19:30
+## DONE Gather the parcel drawings
+closed: 2026-08-24T19:30
 ```
 
 ### Headings
 
-A heading line is: one or more `*`, a space, an optional state, title text,
-and optional trailing tags. Star count is nesting depth, org convention.
+A heading line is: one or more `#`, a space, an optional state, title text,
+and optional trailing tags. Hash count is nesting depth, markdown
+convention. A `#` with no following space is never a heading start; see
+Tags.
 
 ### State
 
-State is the first token of the title position: when that token is uppercase
-and matches a name in the state registry, it is the state; otherwise the
-heading has no state and the token is title text. State names are uppercase
-(`TODO`, `DONE`) so the rule is mechanical and states pop visually.
+State is the first token of the title position: when that token is
+uppercase and matches a name in the state registry, it is the state;
+otherwise the heading has no state and the token is title text. State
+names are uppercase (`TODO`, `DONE`) so the rule is mechanical and states
+pop visually.
 
 States are registry data, hot-reloaded, not hardcoded. The registry defines
 each state's name, whether it is open or closed, and which state is the
@@ -60,9 +75,15 @@ default open state.
 
 ### Tags
 
-Tags are `#`-sigil tokens at the end of the heading line: `#permits #site`.
-Only trailing tokens are tags; a `#word` with title text after it is title
-text. Tags inherit downward through the subtree at index time.
+Tags are `#`-sigil tokens with no space after the sigil: `#permits`,
+`#site-12`. A tag token is recognized in two places only: trailing on a
+heading line, and alone on a line in the file-level block. A `#word` with
+title text after it is title text; a `#word` in body text is prose. Tags
+inherit downward through the subtree at index time.
+
+The heading and tag sigils share a character and never collide: a heading
+is `#` followed by a space at line start, a tag is `#` followed by a word
+character.
 
 ### Fields
 
@@ -83,9 +104,14 @@ child's own field overrides the inherited value. Reserved fields never
 inherit: `scheduled`, `deadline`, `closed`, `repeat`, and `id` describe
 exactly one entry.
 
-Field lines above the first heading are file-level fields. They inherit into
-every heading in the file under the same rules, and `title` names the file.
-A trailing tag line in the file-level block applies file tags the same way.
+Field lines above the first heading are file-level fields. They inherit
+into every heading in the file under the same rules, and `title` names the
+file. A trailing tag line in the file-level block applies file tags the
+same way. The block may be wrapped in a pair of `---` lines (YAML front
+matter as other markdown tooling writes it); the fences are ignored and the
+lines between them are read as field lines, so an existing wiki note with
+front matter parses without edits. Front matter values are read as plain
+strings; YAML lists and nesting are not interpreted.
 
 ### Timestamps
 
@@ -95,6 +121,9 @@ One timestamp type: local wall time, everywhere. The surface format is
 interpreted in the machine's local zone; an explicit offset suffix is
 reserved as a future escape hatch. No stored weekday; weekday is rendered
 at display time.
+
+Tools may accept shorthand on input (`+3d`, `fri`, `next mon`, `oct 15`)
+but always write the surface format. Shorthand never appears in a file.
 
 `scheduled` and `deadline` are distinct fields with distinct meanings:
 scheduled is when work starts appearing on the agenda, deadline is when it
@@ -137,8 +166,12 @@ Body text is free text and is not indexed for dates: only fields feed the
 agenda. Timestamps typed in prose are just prose.
 
 Checkbox lines are the one recognized body structure: a list line matching
-`- [ ]` (open) or `- [x]` (done) is a checkbox item, reserved now so later
-tooling support does not reinterpret existing prose.
+`- [ ]` (open) or `- [x]` (done) is a checkbox item. They are the
+lightweight task form: a checkbox needs no heading, no state, and no
+fields, and belongs to the nearest heading above it (or to the file when
+there is none). A project `TODO.md` can be nothing but checkboxes and still
+be in the corpus; the agenda lists open checkboxes under their file and
+heading.
 
 ### Links
 
@@ -159,9 +192,11 @@ dangling-link reports from all three forms.
 
 The index is derived, disposable state built by scanning the corpus. It owns
 normalization (corpus entries to file sets), tag and field inheritance,
-agenda queries (today, scheduled, deadline, tag), backlinks, dangling-link
-and duplicate-id reports. Files are the source of truth; the index is never
-authoritative.
+agenda queries (today, scheduled, deadline, tag, open checkboxes),
+backlinks, dangling-link and duplicate-id reports. Files are the source of
+truth; the index is never authoritative, and no process holds it between
+invocations: the CLI rebuilds it per run and the editor plugin rebuilds it
+on demand. There is no daemon.
 
 ## Deferred, additive by design
 
