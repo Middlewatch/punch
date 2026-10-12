@@ -21,8 +21,10 @@ alone. Files are the only state; there is no database and no daemon.
 - `vis/punch.lua`: the vis plugin. `:punch TEXT...` captures through the
   CLI; `:punch-cycle`, `:punch-toggle`, `:punch-scheduled DATE`, and
   `:punch-deadline DATE` edit the open buffer through the same `edit.*`
-  functions. It registers commands only; bind keys in visrc after
-  `punch = dofile(os.getenv("HOME") .. "/projects/punch/vis/punch.lua")`.
+  functions. It registers commands only; visrc binds the keys. `make
+  vendor` copies plugin, library, and CLI into the chezmoi source as
+  `~/.config/vis/plugins/punch/` (loaded by `require("plugins/punch")`);
+  rerun it after a change, then `chezmoi apply`.
 - `test/`: plain-Lua tests over fixture files, the vis plugin against a
   stub of the vis API, and a shell run of every CLI verb against a
   throwaway corpus. `make test`, `make lint` (luacheck).

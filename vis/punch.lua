@@ -4,10 +4,21 @@
 -- :punch-toggle, :punch-scheduled, :punch-deadline and returns the module so
 -- visrc can bind keys to its functions. No default key maps.
 --
--- Load with dofile(HOME .. "/projects/punch/vis/punch.lua") or via a
--- symlink on vis's package.path; the library root is $PUNCH_ROOT or the
--- directory above this file.
+-- Two layouts: in the repo this file is vis/punch.lua and the library is
+-- one directory up; vendored into ~/.config/vis/plugins/punch/ (make
+-- vendor) it is init.lua with punch/ and bin/ beside it, loaded by
+-- require("plugins/punch"). $PUNCH_ROOT overrides either. Capture runs the
+-- root's bin/punch, or punch on PATH when the root has none.
 -- luacheck: globals vis
+
+local function exists(path)
+  local f = io.open(path, "r")
+  if f then
+    f:close()
+    return true
+  end
+  return false
+end
 
 local function root_dir()
   local env = os.getenv("PUNCH_ROOT")
@@ -21,7 +32,11 @@ local function root_dir()
   if p then
     p:close()
   end
-  return real:match("^(.*)/vis/[^/]*$") or "."
+  local dir = real:match("^(.*)/[^/]*$") or "."
+  if exists(dir .. "/punch/init.lua") then
+    return dir
+  end
+  return dir:match("^(.*)/vis$") or dir
 end
 
 local root = root_dir()
@@ -30,7 +45,7 @@ package.path = root .. "/?.lua;" .. root .. "/?/init.lua;" .. package.path
 local punch = require("punch")
 local util, dates, parser, edit, registry = punch.util, punch.dates, punch.parser, punch.edit, punch.registry
 
-local M = { root = root, bin = root .. "/bin/punch" }
+local M = { root = root, bin = exists(root .. "/bin/punch") and (root .. "/bin/punch") or "punch" }
 
 local function buffer_lines(file)
   local lines = {}

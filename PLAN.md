@@ -122,7 +122,8 @@ is no prompt primitive; the `:` line is the prompt.
 The buffer glue reads `win.file.lines` into a table, applies the edit
 function, and writes back only the window of lines that changed, so undo
 holds one step and the cursor stays put. The plugin finds the library
-through `$PUNCH_ROOT` or the directory above its own file.
+through `$PUNCH_ROOT`, a `punch/` directory beside its own file (the
+vendored layout), or the directory above `vis/` (the repo).
 
 ### Dates
 
@@ -141,13 +142,15 @@ calendar picker is not planned; revisit only if shorthand fails in use.
    into `~/.local/bin`; move to the chezmoi `dot_local/bin` path once
    stable.
 3. vis plugin (done 2026-10-12): `vis/punch.lua` in this repo, checked by
-   `test/vis.lua` against a stub of the vis API. visrc loads it with
-   `dofile(HOME .. "/projects/punch/vis/punch.lua")` and binds keys; that
-   line is the owner's (`~/.config/vis` is chezmoi-managed).
+   `test/vis.lua` against a stub of the vis API. Deployed the way vis-lspc
+   is: `make vendor` copies plugin, library, and CLI into the chezmoi
+   source as `~/.config/vis/plugins/punch/` with a `VENDORED.md`, visrc
+   loads `require("plugins/punch")` and binds the `Space n` group.
 4. Corpus seeding: `~/punch/inbox.md`, `TODO.md` in the active projects,
    `followup-items.md` from the chezmoi repo folded into its `TODO.md`.
-5. Two-week dogfood with a gripe heading in the inbox; harvest feeds the
-   next schema revision.
+5. Two-week dogfood; gripes are captured as `punch "..." -t gripe` and
+   read back with `punch list '#gripe'`, so no extra file or heading.
+   Harvest feeds the next schema revision.
 
 ## Open items
 
