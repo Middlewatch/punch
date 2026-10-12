@@ -4,6 +4,8 @@
 -- mutation goes through the punch library, so the vis plugin and this
 -- script cannot drift apart.
 
+-- The library root: $PUNCH_ROOT, else the checkout this script sits in
+-- (../punch/), else the install prefix's share/punch (bin/install).
 local function script_root()
   local env = os.getenv("PUNCH_ROOT")
   if env and env ~= "" then
@@ -15,7 +17,13 @@ local function script_root()
   if p then
     p:close()
   end
-  return real:match("^(.*)/bin/[^/]*$") or "."
+  local above = real:match("^(.*)/bin/[^/]*$") or "."
+  local f = io.open(above .. "/punch/init.lua", "r")
+  if f then
+    f:close()
+    return above
+  end
+  return above .. "/share/punch"
 end
 
 local root = script_root()

@@ -116,15 +116,14 @@ eq("capture ok", commands["punch"]({ "call the county", "-s", "fri" }, false, w)
 eq("capture cmd", piped[#piped], "'" .. plugin.root .. "/bin/punch' 'call the county' '-s' 'fri'")
 eq("root absolute", plugin.root:sub(1, 1), "/")
 
--- vendored layout: init.lua beside punch/ and bin/
+-- vendored layout: init.lua beside punch/, no bin, so capture uses PATH
 local tmp = os.tmpname()
 os.remove(tmp)
-os.execute("mkdir -p '" .. tmp .. "/punch' '" .. tmp .. "/bin' && cp '" .. plugin.root .. "'/punch/*.lua '" .. tmp
-  .. "/punch/' && cp '" .. plugin.root .. "/bin/punch' '" .. tmp .. "/bin/' && cp '" .. plugin.root
-  .. "/vis/punch.lua' '" .. tmp .. "/init.lua'")
+os.execute("mkdir -p '" .. tmp .. "/punch' && cp '" .. plugin.root .. "'/punch/*.lua '" .. tmp
+  .. "/punch/' && cp '" .. plugin.root .. "/vis/punch.lua' '" .. tmp .. "/init.lua'")
 local vendored = dofile(tmp .. "/init.lua")
 eq("vendored root", vendored.root, tmp)
-eq("vendored bin", vendored.bin, tmp .. "/bin/punch")
+eq("vendored bin", vendored.bin, "punch")
 os.execute("rm -rf '" .. tmp .. "'")
 eq("capture info", infos[#infos], "~/punch/inbox.md:1  # TODO x")
 eq("capture usage", commands["punch"]({}, false, w), false)

@@ -6,9 +6,10 @@
 --
 -- Two layouts: in the repo this file is vis/punch.lua and the library is
 -- one directory up; vendored into ~/.config/vis/plugins/punch/ (make
--- vendor) it is init.lua with punch/ and bin/ beside it, loaded by
+-- vendor) it is init.lua with punch/ beside it, loaded by
 -- require("plugins/punch"). $PUNCH_ROOT overrides either. Capture runs the
--- root's bin/punch, or punch on PATH when the root has none.
+-- root's bin/punch when there is one (the repo), else punch on PATH
+-- (bin/install).
 -- luacheck: globals vis
 
 local function exists(path)

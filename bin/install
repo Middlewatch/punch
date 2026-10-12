@@ -1,0 +1,28 @@
+#!/bin/sh
+# Install punch under a prefix, default ~/.local: the CLI in PREFIX/bin and
+# the Lua core in PREFIX/share/punch. Re-running reinstalls. Nothing is
+# built; punch is plain Lua 5.4 and needs only the lua interpreter.
+#
+# usage: bin/install [PREFIX]
+#
+# The vis plugin is deployed separately through chezmoi (make vendor) and
+# finds this CLI on PATH for capture.
+set -eu
+cd "$(dirname "$0")/.."
+case ${1:-} in
+-h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+PREFIX=${1:-$HOME/.local}
+
+command -v lua >/dev/null 2>&1 || { echo "bin/install: missing lua" >&2; exit 1; }
+
+rm -rf "$PREFIX/share/punch/punch"
+mkdir -p "$PREFIX/bin" "$PREFIX/share/punch/punch"
+cp punch/*.lua "$PREFIX/share/punch/punch/"
+cp bin/punch "$PREFIX/bin/punch"
+chmod 755 "$PREFIX/bin/punch"
+printf 'installed: %s ' "$PREFIX/bin/punch"
+"$PREFIX/bin/punch" help | head -n 1
+found=$(command -v punch || true)
+[ "$found" = "$PREFIX/bin/punch" ] ||
+	echo "bin/install: PATH finds ${found:-no punch} ahead of $PREFIX/bin/punch" >&2

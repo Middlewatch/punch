@@ -138,14 +138,15 @@ calendar picker is not planned; revisit only if shorthand fails in use.
    are plain `lua` scripts over fixture files in `test/`, run by `make
    test`; no test framework.
 2. CLI (done 2026-10-12): all seven verbs in `bin/punch`, checked end to
-   end by `test/cli.sh` under a throwaway HOME. `make install` symlinks it
-   into `~/.local/bin`; move to the chezmoi `dot_local/bin` path once
-   stable.
+   end by `test/cli.sh` under a throwaway HOME. `bin/install [PREFIX]`
+   installs it the way the vis and tmux forks do (CLI in `PREFIX/bin`,
+   core in `PREFIX/share/punch`); chezmoi does not deploy the CLI.
 3. vis plugin (done 2026-10-12): `vis/punch.lua` in this repo, checked by
    `test/vis.lua` against a stub of the vis API. Deployed the way vis-lspc
-   is: `make vendor` copies plugin, library, and CLI into the chezmoi
-   source as `~/.config/vis/plugins/punch/` with a `VENDORED.md`, visrc
-   loads `require("plugins/punch")` and binds the `Space n` group.
+   is: `make vendor` copies plugin and library into the chezmoi source
+   as `~/.config/vis/plugins/punch/` with a `VENDORED.md`, visrc loads
+   `require("plugins/punch")` and binds the `Space n` group. Capture
+   runs the installed `punch` from PATH.
 4. Corpus seeding: `~/punch/inbox.md`, `TODO.md` in the active projects,
    `followup-items.md` from the chezmoi repo folded into its `TODO.md`.
 5. Two-week dogfood; gripes are captured as `punch "..." -t gripe` and

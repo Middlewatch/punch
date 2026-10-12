@@ -17,14 +17,16 @@ alone. Files are the only state; there is no database and no daemon.
 - `bin/punch`: the CLI. `punch "text"` captures to the inbox; `agenda`,
   `list`, `inbox`, `done`, `refile`, `check` read and edit the corpus
   listed in `~/.config/punch/corpus`. `punch help` has the flags.
-  `make install` symlinks it into `~/.local/bin`.
+  `bin/install [PREFIX]` copies it to `PREFIX/bin` with the core under
+  `PREFIX/share/punch` (default `~/.local`), like the vis and tmux forks.
 - `vis/punch.lua`: the vis plugin. `:punch TEXT...` captures through the
   CLI; `:punch-cycle`, `:punch-toggle`, `:punch-scheduled DATE`, and
   `:punch-deadline DATE` edit the open buffer through the same `edit.*`
   functions. It registers commands only; visrc binds the keys. `make
-  vendor` copies plugin, library, and CLI into the chezmoi source as
+  vendor` copies plugin and library into the chezmoi source as
   `~/.config/vis/plugins/punch/` (loaded by `require("plugins/punch")`);
-  rerun it after a change, then `chezmoi apply`.
+  rerun it after a change, then `chezmoi apply`. Capture runs the
+  installed `punch` from PATH.
 - `test/`: plain-Lua tests over fixture files, the vis plugin against a
   stub of the vis API, and a shell run of every CLI verb against a
   throwaway corpus. `make test`, `make lint` (luacheck).
