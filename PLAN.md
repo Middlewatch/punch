@@ -29,7 +29,7 @@ daily for two weeks without opening a database, a daemon, or Emacs.
   separate corpus entries. The agenda is the only join. Calendar is the
   agenda filtered to `scheduled` and `deadline`; no notification or
   external calendar integration.
-- **D5. Name.** Open. Shortlist in the owner's hands; `dl` remains the
+- **D5. Name: `punch`.** Decided 2026-10-12: a punch list is the items left to close out, and the hit reading fits capture. `dl` remains the
   schema name regardless.
 
 ## Prior work and what it taught
@@ -61,8 +61,8 @@ dl/            Lua library (the core)
   edit.lua     text transforms on a file's lines: append capture,
                cut/paste an entry (refile), cycle state, set field
   registry.lua states and field types, loaded from a data file
-bin/<name>     CLI entry, argument parsing only, calls the library
-vis/<name>.lua vis plugin, key maps and commands only, calls the library
+bin/punch     CLI entry, argument parsing only, calls the library
+vis/punch.lua vis plugin, key maps and commands only, calls the library
 ```
 
 The rule that keeps the two front ends honest: every mutation is a
@@ -73,19 +73,19 @@ contains format knowledge.
 
 ### CLI surface (verbs, subject to the name)
 
-- `<name> "text"`: append a `# TODO text` entry to the inbox. Flags
+- `punch "text"`: append a `# TODO text` entry to the inbox. Flags
   `-t tag` (repeatable), `-s date`, `-d date` set tags, `scheduled`,
   `deadline`; dates accept shorthand and are written in surface form. With
   `-f file` the entry goes straight to that corpus file instead of the
   inbox. No flags, no prompt: capture must be one line and done.
-- `<name> agenda [today|week|all]`: scheduled and deadline entries across
+- `punch agenda [today|week|all]`: scheduled and deadline entries across
   the corpus, late items first, then open checkboxes by file.
-- `<name> list [#tag] [STATE]`: filtered entry list with file:line.
-- `<name> refile <file:line> <target-file> [heading]`: move an entry and
+- `punch list [#tag] [STATE]`: filtered entry list with file:line.
+- `punch refile <file:line> <target-file> [heading]`: move an entry and
   its subtree.
-- `<name> done <file:line>`: cycle state; advances a repeating entry.
-- `<name> inbox`: count and list of inbox entries, the triage prompt.
-- `<name> check`: dangling links, duplicate ids, parse warnings.
+- `punch done <file:line>`: cycle state; advances a repeating entry.
+- `punch inbox`: count and list of inbox entries, the triage prompt.
+- `punch check`: dangling links, duplicate ids, parse warnings.
 
 ### vis plugin surface
 
@@ -103,7 +103,7 @@ does; `vis-menu` is on PATH at `~/.local/bin/vis-menu`).
 - Leader+d: cycle state on the entry under the cursor.
 - Leader+s / leader+e: set `scheduled` / `deadline` via a `:` command that
   accepts shorthand.
-- `:dl agenda`: open the agenda as a read-only buffer with file:line
+- `:punch agenda`: open the agenda as a read-only buffer with file:line
   targets; Enter jumps.
 - Inbox triage is "open `inbox.md`, leader+t on each entry."
 
@@ -122,7 +122,7 @@ calendar picker is not planned; revisit only if shorthand fails in use.
 2. CLI: capture, agenda, list, inbox, done. Install to `~/.local/bin`
    through the chezmoi `dot_local/bin` path once stable.
 3. vis plugin: refile and cycle first, agenda buffer second. Lives in
-   `~/.config/vis/plugins/<name>/` beside `vis-lspc`.
+   `~/.config/vis/plugins/punch/` beside `vis-lspc`.
 4. Corpus seeding: `~/dl/inbox.md`, `TODO.md` in the active projects,
    `followup-items.md` from the chezmoi repo folded into its `TODO.md`.
 5. Two-week dogfood with a gripe heading in the inbox; harvest feeds the
@@ -130,8 +130,7 @@ calendar picker is not planned; revisit only if shorthand fails in use.
 
 ## Open items
 
-- Name (D5).
-- Where the corpus data file lives: `~/.config/<name>/corpus` is the
+- Where the corpus data file lives: `~/.config/punch/corpus` is the
   obvious XDG answer; it is machine-specific, so chezmoi templates it.
 - Whether `TODO.md` is committed or lives in `<slug>/.local/`; per-project
   choice, default committed for public projects.

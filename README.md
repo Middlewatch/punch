@@ -27,4 +27,4 @@ and is left alone.
 ## Current phase
 
 Planning closed 2026-10-12 (D1 markdown profile, D2 Lua core). Next slice is
-the library port, PLAN.md slice 1. The tool name is still open.
+the library port, PLAN.md slice 1. The tool is named `punch` (D5).
