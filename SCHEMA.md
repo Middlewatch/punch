@@ -1,39 +1,21 @@
-# The punch schema: a markdown profile for tasks, notes, and agenda
+# The punch schema
 
-The shared data shape for punch: a CLI and a vis plugin built on one
-Lua core. Files are ordinary markdown; punch recognizes a small set of
-structures inside them and ignores everything else. A format change after
-the Lua core ships is a rewrite of two front ends, so this document settles
-the shape first.
-
-Vocabulary is neutral throughout: entries, headings, states, fields, corpus.
-
-Revision 2026-10-12: rebased from the org-style `.dl` format (star
-headings, `.dl` extension) onto markdown. Semantics are unchanged; only the
-heading sigil, the file extension, and the corpus rule moved. The reasons:
-the task layer is a `TODO.md` per project, the wiki and plan documents are
-already markdown, `mdq` and every renderer already understand it, and one
-format for all of it beats two.
+Files are ordinary markdown and punch recognizes a small set of
+structures inside each. 
 
 ## Corpus
 
 The corpus is a named list of paths, independent of any workspace, kept
 in one data file, `corpus`, in the punch home (`$PUNCH_HOME`, default
-`~/punch/`). The list is machine-local data rather than configuration:
-it names what exists on this machine, so it lives beside the files it
-indexes and no dotfile manager carries it. Each entry is a path:
+`~/punch/`). 
 
 - a directory expands recursively to every `*.md` beneath it
 - a file is taken as-is
 
 Only listed paths are in the corpus; a markdown file elsewhere on disk is
-not. Normalization from entry to file set happens in exactly one place (the
-indexer); no downstream tool distinguishes the two shapes. With no
-`corpus` file the corpus is the punch home itself, which holds the capture
-inbox (`inbox.md`) and any files that belong to no project. A project's
-`TODO.md` enters the corpus by listing the file or its directory
-(`punch add PATH`). The state registry (`states`) and inbox override
-(`inbox`) are files in the same directory, all optional.
+not. The indexer normalizes file entry. With no `corpus` file the corpus is the punch home itself, which holds the capture inbox (`inbox.md`) and any files that belong to no project. 
+A project's `TODO.md` enters the corpus by listing the file or its directory
+(`punch add PATH`). 
 
 ## File format
 
@@ -61,22 +43,14 @@ closed: 2026-08-24T19:30
 
 ### Headings
 
-A heading line is: one or more `#`, a space, an optional state, title text,
-and optional trailing tags. Hash count is nesting depth, markdown
-convention. A `#` with no following space is never a heading start; see
-Tags.
+Follows standard markdown convention
 
 ### State
 
 State is the first token of the title position: when that token is
 uppercase and matches a name in the state registry, it is the state;
 otherwise the heading has no state and the token is title text. State
-names are uppercase (`TODO`, `DONE`) so the rule is mechanical and states
-pop visually.
-
-States are registry data, hot-reloaded, not hardcoded. The registry defines
-each state's name, whether it is open or closed, and which state is the
-default open state.
+names are uppercase (`TODO`, `DONE`) 
 
 ### Tags
 
@@ -86,9 +60,7 @@ heading line, and alone on a line in the file-level block. A `#word` with
 title text after it is title text; a `#word` in body text is prose. Tags
 inherit downward through the subtree at index time.
 
-The heading and tag sigils share a character and never collide: a heading
-is `#` followed by a space at line start, a tag is `#` followed by a word
-character.
+Heading and tags obviously use the same character, personally I've never been a fan of markdown using # as header markers and #word tag structure is pretty commonly understood. Flagging this as a potential convention to change if I ever run into tag collisions. 
 
 ### Fields
 
@@ -104,10 +76,7 @@ string, number, list). Unknown keys index as strings.
 A repeated key is a multi-value field: all values are kept, indexed as a
 list in file order.
 
-Non-reserved fields inherit downward through the subtree at index time; a
-child's own field overrides the inherited value. Reserved fields never
-inherit: `scheduled`, `deadline`, `closed`, `repeat`, and `id` describe
-exactly one entry.
+Non-reserved fields inherit downward through the subtree at index time.
 
 Field lines above the first heading are file-level fields. They inherit
 into every heading in the file under the same rules, and `title` names the
@@ -120,7 +89,7 @@ strings; YAML lists and nesting are not interpreted.
 
 ### Timestamps
 
-One timestamp type: local wall time, everywhere. The surface format is
+The surface format is
 `YYYY-MM-DD` with optional `THH:MM` time (`2026-09-01`,
 `2026-09-01T14:00`). Date is required, time is optional. Times are
 interpreted in the machine's local zone; an explicit offset suffix is
